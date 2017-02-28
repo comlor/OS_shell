@@ -12,7 +12,6 @@ int my_shell();
 // Input Functions
 int read_input(char *);
 int parseInput(char* input, char*prog, char *args[], int *argc);
-int superParse(char* input, char* prog, char* args[], int *argc);
 
 // Execute Command
 int executeCMD(const char*);
