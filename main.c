@@ -14,7 +14,8 @@ int read_input(char *);
 int parseInput(char* input, char*prog, char *args[], int *argc);
 
 // Execute Command
-int executeCMD(const char*);
+int exArgs(char* prog, char*[], int argc);
+int executeCMD(const char *prog, const char *[], const int argc);
 
 
 int main(void)
@@ -52,9 +53,11 @@ int my_shell()
         // Reformat the memory of the user input to max of 255 characters, clears previous input
         user_in = calloc(255, sizeof(char));
 
-        exit = read_input(user_in);
+        if(!exit)
+            exit = read_input(user_in);
 
-        exit = parseInput(user_in, prog, args, &argc);
+        if(!exit)
+            exit = parseInput(user_in, prog, args, &argc);
 
         printf("Arg Count: %d \n",argc);
 
@@ -65,9 +68,18 @@ int my_shell()
         //printf("size of user_in: %d\n", (int)sizeof(user_in));
         //printf("%s\n",user_in);
 
-        exit = executeCMD(user_in);
+        //if(!exit)
+        //    exit = exArgs(prog, args, argc);
 
-        exit = 0;
+        if(!exit)
+            exit = executeCMD(prog, args, &argc);
+
+        /* Clear Variables for next run or exiting */
+        prog = malloc(COMMAND_LIMIT * sizeof(char));
+        for(int i = 0; i < argc; i++)
+            args[i] = malloc(COMMAND_LIMIT * sizeof(char));
+
+        //exit = 0;
     }
 
     // Free the memory we have used this far
@@ -89,7 +101,17 @@ int read_input(char *user_in)
 
     //scanf("%s", user_in);
     //printf("%s\n", user_in);
-    return 1;
+    return 0;
+}
+
+int exArgs(char* prog, char* args[], int argc)
+{
+    int exit_code = 0;
+
+    if(strcmp(prog, 'exit') == 0)
+        exit_code = 1;
+
+    return exit_code;
 }
 
 int parseInput(char* input, char* prog, char* args[], int *argc)
@@ -261,23 +283,29 @@ int parseInput(char* input, char* prog, char* args[], int *argc)
         }
     }
 
+    args[*argc] = (char*)0;
+    *argc = *argc + 1;
+
     return 0;
 }
 
-int executeCMD(const char * cmd)
+int executeCMD(const char* prog, const char * cmd[], const int argc)
 {
-    printf("EXEC FUNCTION\n");
-    printf("%s\b", cmd);
     pid_t pid;
-
     pid = fork();
 
     if(pid < 0)
+    {
         fprintf(stderr, ">> ERROR");
+    }
     else if(pid == 0)
-        execlp(cmd[0], cmd[0], cmd[1], "/", (char *)NULL);
+    {
+        execvp(prog, cmd);
+    }
     else
+    {
         wait(NULL);
+    }
 
     return 0;
 }
