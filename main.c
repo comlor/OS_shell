@@ -39,7 +39,7 @@ int saveToArray(struct Command *in);
 
 // Execute Command
 int executeCMD( char *prog, char *[], int argc);
-static void handler(int sig);
+//static void handler(int sig);
 int runHistory(char* user_input);
 void printHistory();
 
@@ -51,6 +51,9 @@ int main(void)
         my_history[i] = malloc(255 * sizeof(char));
 
     exit_code = my_shell();
+
+    //for(int i = 0; i < MAX_HISTORY; i++)
+    //    free(my_history[i]);
 
     printf("EXIT SUCCESS!\n");
     return exit_code;
@@ -100,23 +103,18 @@ int my_shell()
 
         if(!exit)
         {
-            printf("this user_in: %s\n", user_in);
-
             if(user_in[0] == '!')
             {
                 if(user_in[1] == '!')
                 {
-                    printf("my_history[%d]: %s\n",cur_history_count-1, my_history[cur_history_count-1]);
                     exit = parseInput(my_history[cur_history_count-1], prog, args, &argc);
                     exit = saveCommand(my_history[cur_history_count-1]);
                 }
                 else if(isdigit(user_in[1]) != 0)
                 {
-                    printf("RUN COMMAND INDEX: %d\n", (user_in[1] - '0'));
                     int index = user_in[1] - '0';
                     if(index >= 0 && index < 10)
                     {
-                        printf("history at index: %s\n", my_history[index]);
                         exit = parseInput(my_history[index], prog, args, &argc);
                         exit = saveCommand(my_history[index]);
                     }
@@ -125,7 +123,6 @@ int my_shell()
             else
             {
                 exit = saveCommand(user_in);
-                printf("RAN THIS\n");
                 exit = parseInput(user_in, prog, args, &argc);
             }
         }
@@ -150,17 +147,17 @@ int my_shell()
         }
 
         /* Clear Variables for next run or exiting */
-        prog = malloc(COMMAND_LIMIT * sizeof(char));
+        prog = calloc(COMMAND_LIMIT,sizeof(char));
         for(int i = 0; i < argc; i++)
-            args[i] = malloc(COMMAND_LIMIT * sizeof(char));
+            args[i] = calloc(COMMAND_LIMIT, sizeof(char));
         argc = 0;
     }
 
     // Free the memory we have used this far
     free(user_in);
     free(prog);
-    for(int i = 0; i < argc; i++)
-        free(args[i]);
+    //for(int i = 0; i < argc; i++)
+    //    free(args[i]);
 
     return exit;
 }
@@ -196,7 +193,6 @@ void printHistory()
     {
         printf("%d: %s\n",i,my_history[i]);
     }
-    return 0;
 }
 
 // Working...
@@ -208,6 +204,7 @@ int read_input(char *user_in)
     return 0;
 }
 
+/*
 static void handler(int sig)
 {
 	switch(sig){
@@ -221,6 +218,7 @@ static void handler(int sig)
 	}
 
 }
+*/
 
 int parseInput(char* input, char* prog, char* args[], int *argc)
 {
@@ -231,6 +229,7 @@ int parseInput(char* input, char* prog, char* args[], int *argc)
     char* token;
     int token_index = 0;
     *argc = 0;
+    token = malloc(30 * sizeof(char));
 
     int index;
     index = strcspn(input," ");
