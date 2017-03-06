@@ -1,6 +1,6 @@
 /*
 Chris Omlor
-Edward Hsu
+Edward Hsu(301211630)
 Jacky Lu
 Marcus Hernandez
 */
@@ -17,16 +17,16 @@ Marcus Hernandez
 #define MAX_HISTORY 10
 #define COMMAND_LIMIT 30
 
-int cur_history_count = 0;
 struct Command {
 	char pro[10];
-        char  command[200];
-        int  length;
+    char  command[200];
 };
 
 // Stuff for the History functionality
 // Command array and stuff.
-struct Command *enteredCommands[10] = { NULL };
+int cur_history_count = 0;
+char *my_history[MAX_HISTORY];
+struct Command *enteredCommands[MAX_HISTORY] = { NULL };
 
 // Main Program Loop
 int my_shell();
@@ -34,29 +34,31 @@ int my_shell();
 // Input Functions
 int read_input(char *);
 int parseInput(char* input, char*prog, char *args[], int *argc);
-int saveCommand(char *prog, char *user_in, int* argc);
+int saveCommand(char *user_in);
 int saveToArray(struct Command *in);
 
 // Execute Command
-int exArgs(char* prog, char*[], int argc);
 int executeCMD( char *prog, char *[], int argc);
 static void handler(int sig);
-int runHistory(char* prog);
-int printHistory();
+int runHistory(char* user_input);
+void printHistory();
 
 int main(void)
 {
     int exit_code = 0;
 
+    for(int i = 0; i < MAX_HISTORY; i++)
+        my_history[i] = malloc(255 * sizeof(char));
+
     exit_code = my_shell();
 
     printf("EXIT SUCCESS!\n");
-    return 0;
+    return exit_code;
 }
 
 int my_shell()
 {
-
+    /*
 	struct sigaction act, act_old;
 	act.sa_handler = handler;
 	act.sa_flags = 0;
@@ -66,6 +68,7 @@ int my_shell()
 		perror("signal");
 		return 1;
 	}
+    */
 
     int exit = 0;
     char* user_in;
@@ -83,8 +86,7 @@ int my_shell()
     // Main program loop, Runs as long exit is 0, Set to non zero number to quit program
     while(!exit)
     {
-	printf("\nLeave a space after command for best experience.\n");        
-	printf("Shell Command ->> ");
+        printf("Shell Command ->> ");
         // Flush the buffer of the output stream
         fflush(stdout);
 
@@ -92,41 +94,66 @@ int my_shell()
         user_in = calloc(255, sizeof(char));
 
         if(!exit)
+        {
             exit = read_input(user_in);
+        }
 
         if(!exit)
-            exit = parseInput(user_in, prog, args, &argc);
+        {
+            printf("this user_in: %s\n", user_in);
 
-        printf("Arg Count: %d \n",argc);
+            if(user_in[0] == '!')
+            {
+                if(user_in[1] == '!')
+                {
+                    printf("my_history[%d]: %s\n",cur_history_count-1, my_history[cur_history_count-1]);
+                    exit = parseInput(my_history[cur_history_count-1], prog, args, &argc);
+                    exit = saveCommand(my_history[cur_history_count-1]);
+                }
+                else if(isdigit(user_in[1]) != 0)
+                {
+                    printf("RUN COMMAND INDEX: %d\n", (user_in[1] - '0'));
+                    int index = user_in[1] - '0';
+                    if(index >= 0 && index < 10)
+                    {
+                        printf("history at index: %s\n", my_history[index]);
+                        exit = parseInput(my_history[index], prog, args, &argc);
+                        exit = saveCommand(my_history[index]);
+                    }
+                }
+            }
+            else
+            {
+                exit = saveCommand(user_in);
+                printf("RAN THIS\n");
+                exit = parseInput(user_in, prog, args, &argc);
+            }
+        }
 
-        printf("Prog: %s\n",prog);
-        for(int i = 0; i < argc; i++)
-            printf("Arg[%i] = %s  \n",i,args[i]);
-
-        //printf("size of user_in: %d\n", (int)sizeof(user_in));
-        //printf("%s\n",user_in);
-
-        if(strcmp(prog, "exit") == 0){
-            exit = 1;
-		return exit;
-	}
-	else if(strcmp(prog, "history") == 0){
-		//exit = printHistory();
-	}
-	else if(prog[0] == '!'){
-		//exit = runHistory(prog);
-	}
-	else{
-		//exit = saveCommand(prog, args, argc);
-            exit = executeCMD(prog, args, argc);
-	}
+        if(!exit)
+        {
+            if((strcmp(prog, "exit") == 0) || (strcmp(prog, "exit\n") == 0) || (strcmp(prog, "exit\0") == 0))
+            {
+                exit = 1;
+            }
+            else if((strcmp(prog, "history") == 0) || (strcmp(prog, "history\n") == 0) || (strcmp(prog, "history\0") == 0))
+            {
+                printHistory();
+            }
+            else
+            {
+                if(argc != 0)
+                {
+                    exit = executeCMD(prog,args,argc);
+                }
+            }
+        }
 
         /* Clear Variables for next run or exiting */
         prog = malloc(COMMAND_LIMIT * sizeof(char));
         for(int i = 0; i < argc; i++)
             args[i] = malloc(COMMAND_LIMIT * sizeof(char));
-
-        //exit = 0;
+        argc = 0;
     }
 
     // Free the memory we have used this far
@@ -137,76 +164,40 @@ int my_shell()
 
     return exit;
 }
-/*
+
+
 //create  command into struct
-int saveCommand(char *prog, char *user_in, int* argc){
-        struct Command *temp;
-	strcpy( temp->pro, prog);
-        strcpy( temp->command, user_in);
-        temp->length = argc;
-        saveToArray(temp);
-        return 1;
+int saveCommand(char *user_in)
+{
+    int exit_code = 1;
+    int cur_index = 0;
+
+    if(cur_history_count > 9)
+    {
+        cur_index = cur_history_count % 10;
+        my_history[cur_index] = malloc(255 * sizeof(char));
+        strcpy(my_history[cur_index], user_in);
+        cur_history_count = cur_index + 1;
+        exit_code = 0;
+    }
+    else
+    {
+        strcpy(my_history[cur_history_count], user_in);
+        cur_history_count = cur_history_count + 1;
+        exit_code = 0;
+    }
+
+    return exit_code;
 }
 
-int saveToArray(struct Command *in){
-        int i;
-        int maxed = 0;
-
-        if(enteredCommands[9]){
-                maxed = 1;
-                //printf("Array Maxed");
-        }
-
-        if(maxed == 0){
-                for( i = 0; i < MAX_HISTORY; i = i + 1){
-                        if (!enteredCommands[i]){
-                                enteredCommands[i] = in;
-                                //printf("%d\n", i);
-                                break;
-                        }
-                }
-        }
-        if(maxed == 1){
-                int k = 0;
-                //struct Command *newCommandList[10];
-                for(k = 0; k < MAX_HISTORY - 1; k = k + 1){
-                        enteredCommands[k] = enteredCommands[k + 1];
-                }
-                enteredCommands[MAX_HISTORY - 1] = in;
-                //enteredCommands = newCommandList;
-        }
-        return 1;
+void printHistory()
+{
+    for(int i = 0; i < cur_history_count; i++)
+    {
+        printf("%d: %s\n",i,my_history[i]);
+    }
+    return 0;
 }
-int runHistory(char* prog){
-	int index = 0;
-	if(!enteredCommands[0]){
-		printf("No commands in history\n");
-		return 0;
-	}
-	if(prog[1] == '!')
-		index = MAX_HISTORY - 1;
-	else{
-		index = atoi(&prog[1]) - 1;
-		if((index < 0) || (index > MAX_HISTORY)){
-			fprintf(stderr, "No such command in history.\n");
-			return 0;
-		}
-	}
-	printf("Running: %s\n", prog);
-	struct Command *temp = enteredCommands[index];
-	return executeCMD(temp->pro, temp->command, temp->length);
-}
-int printHistory(){
-        int i;
-        for( i = 0; i < MAX_HISTORY; i = i + 1){
-                if (enteredCommands[i]){
-                        int j = 10 - i;
-                        printf("%d %s\n", j, enteredCommands[i]->command);
-                }
-        }
-        return 1;
-}*/
-
 
 // Working...
 // Needs Error handling and buffer overflow detection
@@ -214,14 +205,11 @@ int read_input(char *user_in)
 {
     fgets(user_in,1024,stdin);
     fflush(stdin);
-    //printf("size of user_in: %d\n", (int)sizeof(user_in));
-
-    //scanf("%s", user_in);
-    //printf("%s\n", user_in);
     return 0;
 }
 
-static void handler(int sig){
+static void handler(int sig)
+{
 	switch(sig){
 		case SIGTERM:
 		case SIGINT:
@@ -232,16 +220,6 @@ static void handler(int sig){
 			break;
 	}
 
-}
-
-int exArgs(char* prog, char* args[], int argc)
-{
-    int exit_code = 0;
-
-    if(strcmp(prog, "exit") == 0)
-        exit_code = 1;
-
-    return exit_code;
 }
 
 int parseInput(char* input, char* prog, char* args[], int *argc)
@@ -258,10 +236,14 @@ int parseInput(char* input, char* prog, char* args[], int *argc)
     index = strcspn(input," ");
     while(i < index)
     {
-        token[token_index] = input[i];
-        token_index = token_index + 1;
+        if(isalnum(input[i]) != 0)
+        {
+            token[token_index] = input[i];
+            token_index = token_index + 1;
+        }
         i = i + 1;
     }
+
     token[token_index] = '\0';
     strcpy(prog, token);
     strcpy(args[*argc], token);
@@ -435,13 +417,13 @@ int executeCMD(char* prog, char * cmd[], int argc)
     if(pid < 0)
     {
         fprintf(stderr, ">> ERROR");
-	exit(-1); //I think we should exit if it really fails
+        exit(-1); //I think we should exit if it really fails
     }
     else if(pid == 0)
     {
         execvp(cmd[0], cmd);
-	perror("execvp");
-	exit(0);
+        perror("execvp");
+        exit(0);
     }
     else
     {
